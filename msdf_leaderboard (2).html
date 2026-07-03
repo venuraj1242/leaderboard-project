@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSDF Weekly Placement Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ============================================================
+   MSDF WEEKLY PLACEMENT LEADERBOARD
+   Data lives in CONFIG.FALLBACK_DATA below (or pulled live from
+   a Google Apps Script Web App URL — see CONFIG.SHEET_WEBAPP_URL).
+   Update the numbers there each week; nothing else needs to change.
+   ============================================================ */
+
+:root{
+  --gold:#FFD700;
+  --blue:#2563EB;
+  --green:#10B981;
+  --purple:#7C3AED;
+  --bg-0:#0a0e17;
+  --bg-1:#0f1524;
+  --bg-2:#141b2e;
+  --glass:rgba(255,255,255,0.045);
+  --glass-border:rgba(255,255,255,0.09);
+  --ink:#eef1f8;
+  --ink-dim:#8a93a8;
+  --ink-dimmer:#5b647a;
+  --radius:18px;
+  --font-display:'Sora',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+
+body{
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 700px at 15% -10%, rgba(37,99,235,0.20), transparent 60%),
+    radial-gradient(1000px 600px at 100% 10%, rgba(124,58,237,0.16), transparent 55%),
+    radial-gradient(900px 500px at 50% 110%, rgba(16,185,129,0.10), transparent 55%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 40%, var(--bg-2));
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001s !important; transition-duration:0.001s !important;}
+}
+
+.wrap{max-width:1320px; margin:0 auto; padding:28px 20px 80px;}
+
+/* ---------- Glass card base ---------- */
+.glass{
+  background:var(--glass);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  box-shadow:0 8px 32px rgba(0,0,0,0.35);
+}
+
+/* ---------- HERO ---------- */
+.hero{ text-align:center; padding:56px 20px 40px; position:relative; }
+.trophy-float{
+  font-size:52px; display:inline-block;
+  animation:float 3.6s ease-in-out infinite;
+  filter:drop-shadow(0 0 22px rgba(255,215,0,0.55));
+}
+@keyframes float{
+  0%,100%{ transform:translateY(0) rotate(-3deg); }
+  50%{ transform:translateY(-14px) rotate(3deg); }
+}
+.hero h1{
+  font-family:var(--font-display);
+  font-weight:800;
+  font-size:clamp(28px,5vw,52px);
+  letter-spacing:-0.02em;
+  margin-top:10px;
+  background:linear-gradient(100deg,var(--gold),#fff8dc 40%,var(--gold));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:shimmer 5s linear infinite;
+  background-size:220% auto;
+}
+@keyframes shimmer{ to{ background-position:220% center; } }
+.hero .sub{
+  margin-top:10px; color:var(--ink-dim); font-size:15px; letter-spacing:0.02em;
+}
+.hero .sub .rng{ color:var(--ink); font-family:var(--font-mono); font-weight:500; }
+
+/* ---------- Stat counters ---------- */
+.stat-grid{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:34px;
+}
+.stat-card{
+  padding:22px 20px; text-align:center; position:relative; overflow:hidden;
+  opacity:0; transform:translateY(18px);
+  animation:rise 0.6s ease forwards;
+}
+.stat-card::before{
+  content:''; position:absolute; inset:0; opacity:0.08; pointer-events:none;
+  background:var(--accent, var(--blue));
+}
+.stat-card .val{
+  font-family:var(--font-display); font-weight:800; font-size:clamp(26px,3.4vw,38px);
+  color:var(--accent,var(--blue));
+}
+.stat-card .lbl{ margin-top:6px; font-size:12.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.08em; }
+@keyframes rise{ to{ opacity:1; transform:translateY(0); } }
+
+/* ---------- Section heading ---------- */
+.section{ margin-top:52px; }
+.section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.section-head h2{
+  font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-0.01em;
+}
+.section-head .eyebrow{
+  font-family:var(--font-mono); font-size:11px; color:var(--ink-dimmer); text-transform:uppercase; letter-spacing:0.12em;
+}
+.section-head .tag{
+  font-size:12.5px; color:var(--ink-dim); background:rgba(255,255,255,0.05);
+  border:1px solid var(--glass-border); padding:5px 12px; border-radius:999px;
+}
+
+/* ---------- Leaderboard ---------- */
+.leaderboard{ display:flex; flex-direction:column; gap:12px; }
+.lb-row{
+  display:grid;
+  grid-template-columns:56px 1.6fr 0.9fr 0.9fr 0.9fr 1.4fr 0.9fr 0.9fr;
+  align-items:center; gap:14px; padding:16px 18px;
+  opacity:0; transform:translateX(-24px);
+  animation:slideIn 0.55s ease forwards;
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.lb-row:hover{ transform:translateX(4px) !important; border-color:rgba(255,255,255,0.22); box-shadow:0 12px 34px rgba(0,0,0,0.4); }
+@keyframes slideIn{ to{ opacity:1; transform:translateX(0); } }
+.lb-row.rank-1{ border-color:rgba(255,215,0,0.45); box-shadow:0 0 0 1px rgba(255,215,0,0.12) inset, 0 8px 28px rgba(255,215,0,0.10); }
+.rank-badge{ font-size:24px; text-align:center; font-family:var(--font-mono); font-weight:700; }
+.lb-state{ font-weight:600; font-size:15px; }
+.lb-state .region{ display:block; font-size:11.5px; color:var(--ink-dimmer); font-weight:400; margin-top:2px; }
+.lb-figure{ font-family:var(--font-mono); font-size:15px; text-align:center; }
+.lb-figure .k{ display:block; font-size:10px; color:var(--ink-dimmer); text-transform:uppercase; letter-spacing:0.06em; font-family:var(--font-body); }
+.progress-track{ position:relative; height:9px; border-radius:999px; background:rgba(255,255,255,0.07); overflow:hidden; }
+.progress-fill{
+  position:absolute; inset:0 auto 0 0; width:0%; border-radius:999px;
+  background:linear-gradient(90deg,var(--blue),var(--purple));
+  transition:width 1.1s cubic-bezier(.22,1,.36,1);
+}
+.progress-pct{ font-size:11px; color:var(--ink-dim); margin-top:5px; font-family:var(--font-mono); text-align:right;}
+.lb-head-row{
+  display:grid; grid-template-columns:56px 1.6fr 0.9fr 0.9fr 0.9fr 1.4fr 0.9fr 0.9fr;
+  gap:14px; padding:0 18px; font-size:11px; text-transform:uppercase; letter-spacing:0.07em;
+  color:var(--ink-dimmer); margin-bottom:4px;
+}
+.lb-head-row span:not(:first-child){ text-align:center; }
+
+/* confetti canvas over rank 1 row */
+.confetti-piece{
+  position:absolute; width:6px; height:10px; top:-10px; opacity:0.9; pointer-events:none;
+  animation:fall linear forwards;
+}
+@keyframes fall{ to{ transform:translateY(160px) rotate(540deg); opacity:0; } }
+
+/* ---------- Achievement cards ---------- */
+.ach-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.ach-card{
+  padding:24px 20px; position:relative; overflow:hidden;
+  opacity:0; transform:translateY(20px); animation:rise 0.6s ease forwards;
+  transition:transform .3s ease;
+}
+.ach-card:hover{ transform:translateY(-6px); }
+.ach-icon{ font-size:30px; }
+.ach-title{ font-family:var(--font-display); font-weight:700; font-size:14.5px; margin-top:10px; color:var(--ink); }
+.ach-value{ font-family:var(--font-display); font-weight:800; font-size:30px; margin-top:8px; }
+.ach-who{ font-size:12.5px; color:var(--ink-dim); margin-top:4px; }
+.ach-card::after{
+  content:''; position:absolute; width:130px; height:130px; border-radius:50%;
+  background:var(--accent,var(--gold)); opacity:0.14; filter:blur(30px);
+  right:-40px; top:-40px;
+}
+
+/* ---------- Progress (circular) ---------- */
+.prog-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:16px; }
+.prog-card{ padding:20px 14px; text-align:center; opacity:0; transform:scale(0.9); animation:pop 0.5s ease forwards; }
+@keyframes pop{ to{ opacity:1; transform:scale(1); } }
+.prog-card.leader{ border-color:rgba(255,215,0,0.5); box-shadow:0 0 24px rgba(255,215,0,0.12); }
+.ring-wrap{ position:relative; width:104px; height:104px; margin:0 auto; }
+.ring-wrap svg{ transform:rotate(-90deg); width:104px; height:104px; }
+.ring-bg{ fill:none; stroke:rgba(255,255,255,0.08); stroke-width:9; }
+.ring-fg{ fill:none; stroke-width:9; stroke-linecap:round; stroke-dasharray:283; stroke-dashoffset:283; transition:stroke-dashoffset 1.3s cubic-bezier(.22,1,.36,1); }
+.ring-label{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; font-size:16px; }
+.prog-state{ margin-top:12px; font-size:13px; font-weight:600; }
+.prog-sub{ font-size:11px; color:var(--ink-dimmer); margin-top:3px; font-family:var(--font-mono); }
+
+/* ---------- Operations leaderboard ---------- */
+.ops-row{
+  padding:16px 18px; opacity:0; transform:translateX(24px); animation:slideInR 0.55s ease forwards; margin-bottom:12px;
+}
+@keyframes slideInR{ to{ opacity:1; transform:translateX(0); } }
+.ops-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;}
+.ops-name{ font-weight:600; font-size:14.5px; display:flex; align-items:center; gap:8px; }
+.ops-sel{ font-family:var(--font-mono); font-size:13px; color:var(--gold); }
+.ops-bars{ display:flex; flex-direction:column; gap:8px; }
+.ops-bar-row{ display:grid; grid-template-columns:110px 1fr 46px; align-items:center; gap:10px; }
+.ops-bar-label{ font-size:11px; color:var(--ink-dimmer); text-transform:uppercase; letter-spacing:0.05em; }
+.ops-bar-track{ height:7px; border-radius:999px; background:rgba(255,255,255,0.07); overflow:hidden; }
+.ops-bar-fill{ height:100%; width:0%; border-radius:999px; transition:width 1.1s cubic-bezier(.22,1,.36,1); }
+.ops-bar-val{ font-family:var(--font-mono); font-size:11.5px; text-align:right; color:var(--ink-dim); }
+
+/* ---------- Charts ---------- */
+.chart-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.chart-card{ padding:22px; }
+.chart-card h3{ font-family:var(--font-display); font-size:15px; font-weight:700; margin-bottom:14px; }
+.chart-card canvas{ max-height:280px; }
+.funnel-card{ grid-column:1 / -1; }
+.funnel{ display:flex; align-items:flex-end; justify-content:space-around; gap:20px; margin-top:16px; flex-wrap:wrap; }
+.funnel-step{ text-align:center; flex:1; min-width:140px; }
+.funnel-bar{ height:14px; border-radius:999px; margin:0 auto 10px; transition:width 1.2s cubic-bezier(.22,1,.36,1); width:0%; }
+.funnel-val{ font-family:var(--font-display); font-weight:800; font-size:22px; }
+.funnel-lbl{ font-size:11.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.06em; margin-top:4px; }
+.funnel-arrow{ color:var(--ink-dimmer); font-size:20px; align-self:center; }
+
+/* ---------- Motivation ---------- */
+.motiv-grid{ display:flex; flex-direction:column; gap:12px; }
+.motiv-item{
+  display:flex; gap:14px; align-items:flex-start; padding:16px 18px;
+  opacity:0; transform:translateY(14px); animation:rise 0.5s ease forwards;
+  border-left:3px solid var(--accent,var(--gold));
+}
+.motiv-icon{ font-size:22px; }
+.motiv-text{ font-size:14px; color:var(--ink); line-height:1.5; }
+.motiv-text b{ color:var(--accent,var(--gold)); }
+
+/* ---------- Footer ---------- */
+.footer{ margin-top:60px; text-align:center; color:var(--ink-dimmer); font-size:12px; }
+.footer .src{ font-family:var(--font-mono); margin-top:6px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width:980px){
+  .stat-grid{ grid-template-columns:repeat(2,1fr); }
+  .ach-grid{ grid-template-columns:repeat(2,1fr); }
+  .prog-grid{ grid-template-columns:repeat(3,1fr); }
+  .chart-grid{ grid-template-columns:1fr; }
+  .lb-row, .lb-head-row{ grid-template-columns:40px 1.3fr 0.8fr 0.8fr 1.2fr; }
+  .lb-head-row span:nth-child(6), .lb-head-row span:nth-child(7),
+  .lb-row .hide-sm{ display:none; }
+}
+@media (max-width:620px){
+  .stat-grid{ grid-template-columns:repeat(2,1fr); }
+  .ach-grid{ grid-template-columns:1fr 1fr; }
+  .prog-grid{ grid-template-columns:repeat(2,1fr); }
+  .lb-row, .lb-head-row{ grid-template-columns:34px 1fr 0.8fr 1fr; }
+  .lb-head-row span:nth-child(4), .lb-head-row span:nth-child(5),
+  .lb-row .hide-xs{ display:none; }
+  .ops-bar-row{ grid-template-columns:80px 1fr 36px; }
+}
+
+/* status pill for data source */
+.datasrc{
+  display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-dim);
+  background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); padding:5px 12px; border-radius:999px; margin-top:16px;
+}
+.datasrc .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
+.datasrc.live .dot{ background:var(--green); }
+.datasrc.demo .dot{ background:var(--gold); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <span class="trophy-float">🏆</span>
+    <h1>MSDF Weekly Placement Leaderboard</h1>
+    <p class="sub">Performance Summary &middot; <span class="rng" id="periodLabel">—</span></p>
+    <div id="dataSourcePill"></div>
+
+    <div class="stat-grid" id="statGrid"></div>
+  </section>
+
+  <!-- ================= LEADERBOARD ================= -->
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">Regional Ranking</div>
+        <h2>Weekly Placement Leaderboard</h2>
+      </div>
+      <span class="tag">Ranked by Weekly Placed Updated</span>
+    </div>
+    <div class="lb-head-row">
+      <span>Rank</span><span style="text-align:left">State</span><span>Placed Weekly</span>
+      <span class="hide-xs">Target</span><span class="hide-sm">Total</span>
+      <span>Progress</span><span class="hide-sm">Anudip</span><span class="hide-xs">Self</span>
+    </div>
+    <div class="leaderboard" id="leaderboard"></div>
+  </section>
+
+  <!-- ================= ACHIEVEMENTS ================= -->
+  <section class="section">
+    <div class="section-head">
+      <div><div class="eyebrow">Recognition</div><h2>Achievement Cards</h2></div>
+    </div>
+    <div class="ach-grid" id="achGrid"></div>
+  </section>
+
+  <!-- ================= PROGRESS TOWARD TARGET ================= -->
+  <section class="section">
+    <div class="section-head">
+      <div><div class="eyebrow">Target Tracking</div><h2>Progress Toward Target</h2></div>
+      <span class="tag">Total Placed ÷ Target</span>
+    </div>
+    <div class="prog-grid" id="progGrid"></div>
+  </section>
+
+  <!-- ================= OPERATIONS ================= -->
+  <section class="section">
+    <div class="section-head">
+      <div><div class="eyebrow">Funnel Performance</div><h2>Placement Operations Leaderboard</h2></div>
+      <span class="tag">Ranked by Selections</span>
+    </div>
+    <div id="opsLeaderboard"></div>
+  </section>
+
+  <!-- ================= CHARTS ================= -->
+  <section class="section">
+    <div class="section-head">
+      <div><div class="eyebrow">Visual Breakdown</div><h2>Charts</h2></div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card glass"><h3>Anudip vs Self Placement (Weekly)</h3><canvas id="chartStacked"></canvas></div>
+      <div class="chart-card glass"><h3>Target vs Total Placement</h3><canvas id="chartTargetVsTotal"></canvas></div>
+      <div class="chart-card glass"><h3>Placement Distribution</h3><canvas id="chartPie"></canvas></div>
+      <div class="chart-card glass"><h3>Operations Funnel — All Regions</h3><canvas id="chartOpsFunnel" style="display:none"></canvas>
+        <div class="funnel" id="funnelDisplay"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MOTIVATION ================= -->
+  <section class="section">
+    <div class="section-head">
+      <div><div class="eyebrow">Team Message</div><h2>This Week's Callouts</h2></div>
+    </div>
+    <div class="motiv-grid glass" style="padding:8px;" id="motivGrid"></div>
+  </section>
+
+  <div class="footer">
+    <div>MSDF Weekly Placement Leaderboard &middot; auto-generated from live data — edit the sheet, not the code.</div>
+    <div class="src" id="footerSrc"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   1. CONFIG — the only two things you should ever touch
+   ============================================================ */
+const CONFIG = {
+  // Paste your deployed Google Apps Script Web App URL here once ready.
+  // Leave it as an empty string to run on the FALLBACK_DATA below (demo/offline mode).
+  // See the companion Code.gs (Apps Script) for the server-side script that
+  // reads your Google Sheet and returns JSON in this exact shape.
+  SHEET_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxtkvgGqEpF-gA_QBxI7KUe27lC3HoLJlV1rAJJgPcf_WgVLJR5iiPX8Urdo2NlhdW7jg/exec",
+
+  // Used only when SHEET_WEBAPP_URL is empty, or if the live fetch fails.
+  FALLBACK_DATA: {
+    period: { start: "2026-06-01", end: "2026-07-30" },
+    placement: [
+      { state: "Maharashtra-Pune",   target:260, totalPlaced:125, weeklyPlaced:35, anudip:9,  self:26 },
+      { state: "Maharashtra-Mumbai", target:387, totalPlaced:130, weeklyPlaced:29, anudip:21, self:8  },
+      { state: "Uttar Pradesh",      target:344, totalPlaced:27,  weeklyPlaced:7,  anudip:4,  self:3  },
+      { state: "Karnataka",          target:355, totalPlaced:2,   weeklyPlaced:1,  anudip:0,  self:1  },
+      { state: "Tamil Nadu",         target:414, totalPlaced:280, weeklyPlaced:0,  anudip:0,  self:0  }
+    ],
+    operations: [
+      { state: "Uttar Pradesh",      totalPlaced:27,  totalOpportunity:113, uniqueOpportunity:28, nominations:304, interview:69,  selection:2  },
+      { state: "Maharashtra-Pune",   totalPlaced:125, totalOpportunity:206, uniqueOpportunity:28, nominations:345, interview:57,  selection:8  },
+      { state: "Karnataka",          totalPlaced:2,   totalOpportunity:23,  uniqueOpportunity:11, nominations:149, interview:74,  selection:2  },
+      { state: "Tamil Nadu",         totalPlaced:280, totalOpportunity:24,  uniqueOpportunity:7,  nominations:270, interview:121, selection:0  },
+      { state: "Maharashtra-Mumbai", totalPlaced:130, totalOpportunity:134, uniqueOpportunity:39, nominations:310, interview:81,  selection:24 }
+    ]
+  }
+};
+
+/* ============================================================
+   2. DATA LOADING
+   ============================================================ */
+async function loadData(){
+  if (CONFIG.SHEET_WEBAPP_URL && CONFIG.SHEET_WEBAPP_URL.trim().length > 0){
+    try{
+      const res = await fetch(CONFIG.SHEET_WEBAPP_URL, { method:"GET" });
+      const raw = await res.text();  // read as text first so bad payloads don't throw before we can log them
+      if (!res.ok){
+        console.error("Sheet fetch returned status " + res.status + ". Body was:", raw.slice(0,500));
+        throw new Error("Bad response " + res.status);
+      }
+      let json;
+      try{
+        json = JSON.parse(raw);
+      }catch(parseErr){
+        console.error("Sheet response wasn't valid JSON — this usually means the Apps Script URL is showing a login/permission page instead of your data. Raw response:", raw.slice(0,500));
+        throw parseErr;
+      }
+      if (!Array.isArray(json.placement) || !Array.isArray(json.operations) || json.placement.length === 0 || json.operations.length === 0){
+        console.error("Sheet response was valid JSON but didn't contain the expected placement/operations arrays:", json);
+        throw new Error("Malformed payload — placement/operations missing or empty");
+      }
+      console.info("Live sheet data loaded:", json);
+      return { data: json, live: true };
+    }catch(err){
+      console.warn("Live sheet fetch failed, falling back to embedded demo data. Open DevTools (F12) → Console to see why:", err);
+      return { data: CONFIG.FALLBACK_DATA, live: false, error: err };
+    }
+  }
+  return { data: CONFIG.FALLBACK_DATA, live: false };
+}
+
+/* ============================================================
+   3. DERIVED METRICS
+   ============================================================ */
+function deriveAll(data){
+  const p = data.placement.map(r => ({...r, progressPct: r.target ? (r.totalPlaced / r.target) * 100 : 0}));
+  const rankedByWeekly = [...p].sort((a,b) => b.weeklyPlaced - a.weeklyPlaced);
+  const o = data.operations.map(r => ({...r}));
+  const rankedBySelection = [...o].sort((a,b) => b.selection - a.selection);
+
+  const totals = {
+    target: p.reduce((s,r)=>s+r.target,0),
+    totalPlaced: p.reduce((s,r)=>s+r.totalPlaced,0),
+    weeklyPlaced: p.reduce((s,r)=>s+r.weeklyPlaced,0),
+    anudip: p.reduce((s,r)=>s+r.anudip,0),
+    self: p.reduce((s,r)=>s+r.self,0),
+    totalOpportunity: o.reduce((s,r)=>s+r.totalOpportunity,0),
+    uniqueOpportunity: o.reduce((s,r)=>s+r.uniqueOpportunity,0),
+    nominations: o.reduce((s,r)=>s+r.nominations,0),
+    interview: o.reduce((s,r)=>s+r.interview,0),
+    selection: o.reduce((s,r)=>s+r.selection,0)
+  };
+
+  const weeklyChampion = rankedByWeekly[0];
+  const anudipChampion = [...p].sort((a,b)=>b.anudip-a.anudip)[0];
+  const selfChampion   = [...p].sort((a,b)=>b.self-a.self)[0];
+  const overallLeader  = [...p].sort((a,b)=>b.totalPlaced-a.totalPlaced)[0];
+  const progressLeader = [...p].sort((a,b)=>b.progressPct-a.progressPct)[0];
+  const laggards = [...p].filter(r => r.weeklyPlaced <= 1).sort((a,b)=>a.weeklyPlaced-b.weeklyPlaced);
+
+  return { placement:p, rankedByWeekly, operations:o, rankedBySelection, totals,
+    weeklyChampion, anudipChampion, selfChampion, overallLeader, progressLeader, laggards };
+}
+
+/* ============================================================
+   4. RENDERERS
+   ============================================================ */
+const MEDALS = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"];
+const fmt = n => Number(n).toLocaleString("en-IN");
+function rankIcon(i){ return MEDALS[i] || (i+1)+"️⃣"; }
+
+function animateCount(el, to, duration=1200){
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now-start)/duration);
+    const eased = 1 - Math.pow(1-t, 3);
+    el.textContent = fmt(Math.round(eased * to));
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderPeriod(period){
+  const opts = { day:"numeric", month:"short", year:"numeric" };
+  const s = new Date(period.start).toLocaleDateString("en-GB", opts);
+  const e = new Date(period.end).toLocaleDateString("en-GB", opts);
+  document.getElementById("periodLabel").textContent = `${s} – ${e}`;
+}
+
+function renderDataSourcePill(live, error){
+  const el = document.getElementById("dataSourcePill");
+  el.innerHTML = `<div class="datasrc ${live?'live':'demo'}"><span class="dot"></span>${
+    live ? "Live data from Google Sheet" : "Demo data — connect Apps Script URL in CONFIG to go live"
+  }</div>`;
+  document.getElementById("footerSrc").textContent = live
+    ? "Source: Google Sheet (via Apps Script Web App)"
+    : "Source: embedded fallback data (CONFIG.FALLBACK_DATA)";
+}
+
+function renderStats(totals){
+  const cards = [
+    { label:"Total Weekly Placements", val:totals.weeklyPlaced, accent:"var(--blue)" },
+    { label:"Placed by Anudip",        val:totals.anudip,       accent:"var(--purple)" },
+    { label:"Self Placed",             val:totals.self,         accent:"var(--green)" },
+    { label:"Total Placements",        val:totals.totalPlaced,  accent:"var(--gold)" }
+  ];
+  const grid = document.getElementById("statGrid");
+  grid.innerHTML = cards.map((c,i)=>`
+    <div class="stat-card glass" style="--accent:${c.accent}; animation-delay:${i*0.09}s">
+      <div class="val" id="stat-${i}">0</div>
+      <div class="lbl">${c.label}</div>
+    </div>`).join("");
+  cards.forEach((c,i)=> animateCount(document.getElementById(`stat-${i}`), c.val));
+}
+
+function spawnConfetti(container){
+  const colors = ["#FFD700","#2563EB","#10B981","#7C3AED","#fff"];
+  for(let i=0;i<26;i++){
+    const p = document.createElement("span");
+    p.className = "confetti-piece";
+    p.style.left = (Math.random()*100)+"%";
+    p.style.background = colors[i % colors.length];
+    p.style.animationDuration = (1.4 + Math.random()*1.1)+"s";
+    p.style.animationDelay = (Math.random()*0.6)+"s";
+    container.appendChild(p);
+    setTimeout(()=>p.remove(), 3000);
+  }
+}
+
+function renderLeaderboard(ranked, playConfetti){
+  const maxTarget = Math.max(...ranked.map(r=>r.target));
+  const el = document.getElementById("leaderboard");
+  el.innerHTML = ranked.map((r,i)=>`
+    <div class="lb-row glass ${i===0?'rank-1':''}" style="animation-delay:${i*0.09}s" data-rank="${i}">
+      <div class="rank-badge">${rankIcon(i)}</div>
+      <div class="lb-state">${r.state}<span class="region">${r.progressPct>=50?'On track':'Needs push'}</span></div>
+      <div class="lb-figure">${fmt(r.weeklyPlaced)}<span class="k">Weekly</span></div>
+      <div class="lb-figure hide-xs">${fmt(r.target)}<span class="k">Target</span></div>
+      <div class="lb-figure hide-sm">${fmt(r.totalPlaced)}<span class="k">Total</span></div>
+      <div>
+        <div class="progress-track"><div class="progress-fill" data-w="${Math.min(100,r.progressPct)}"></div></div>
+        <div class="progress-pct">${r.progressPct.toFixed(1)}%</div>
+      </div>
+      <div class="lb-figure hide-sm">${fmt(r.anudip)}<span class="k">Anudip</span></div>
+      <div class="lb-figure hide-xs">${fmt(r.self)}<span class="k">Self</span></div>
+    </div>`).join("");
+
+  requestAnimationFrame(()=>{
+    el.querySelectorAll(".progress-fill").forEach(f=>{ f.style.width = f.dataset.w + "%"; });
+  });
+
+  const rank1 = el.querySelector('.lb-row[data-rank="0"]');
+  if (rank1 && playConfetti) setTimeout(()=>spawnConfetti(rank1), 500);
+}
+
+function renderAchievements(d){
+  const cards = [
+    { icon:"🏆", title:"Weekly Champion", value:fmt(d.weeklyChampion.weeklyPlaced), who:d.weeklyChampion.state, accent:"var(--gold)" },
+    { icon:"🔥", title:"Best Anudip Team", value:fmt(d.anudipChampion.anudip)+" Placements", who:d.anudipChampion.state, accent:"var(--purple)" },
+    { icon:"⭐", title:"Self Placement Champion", value:fmt(d.selfChampion.self)+" Placements", who:d.selfChampion.state, accent:"var(--green)" },
+    { icon:"🎯", title:"Overall Placement Leader", value:fmt(d.overallLeader.totalPlaced)+" Placements", who:d.overallLeader.state, accent:"var(--blue)" }
+  ];
+  document.getElementById("achGrid").innerHTML = cards.map((c,i)=>`
+    <div class="ach-card glass" style="--accent:${c.accent}; animation-delay:${i*0.1}s">
+      <div class="ach-icon">${c.icon}</div>
+      <div class="ach-title">${c.title}</div>
+      <div class="ach-value" style="color:${c.accent}">${c.value}</div>
+      <div class="ach-who">${c.who}</div>
+    </div>`).join("");
+}
+
+function renderProgressRings(placement, progressLeaderState){
+  const colorFor = pct => pct>=70 ? "var(--green)" : pct>=40 ? "var(--blue)" : "var(--gold)";
+  const el = document.getElementById("progGrid");
+  el.innerHTML = placement.map((r,i)=>{
+    const pct = Math.min(100, r.progressPct);
+    const dash = 283 - (283 * pct/100);
+    const isLeader = r.state === progressLeaderState;
+    return `
+    <div class="prog-card glass ${isLeader?'leader':''}" style="animation-delay:${i*0.08}s">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 104 104">
+          <circle class="ring-bg" cx="52" cy="52" r="45"></circle>
+          <circle class="ring-fg" cx="52" cy="52" r="45" stroke="${colorFor(pct)}" data-dash="${dash}"></circle>
+        </svg>
+        <div class="ring-label">${pct.toFixed(0)}%</div>
+      </div>
+      <div class="prog-state">${isLeader?'👑 ':''}${r.state}</div>
+      <div class="prog-sub">${fmt(r.totalPlaced)} / ${fmt(r.target)}</div>
+    </div>`;
+  }).join("");
+  requestAnimationFrame(()=>{
+    el.querySelectorAll(".ring-fg").forEach(c=>{ c.style.strokeDashoffset = c.dataset.dash; });
+  });
+}
+
+function renderOpsLeaderboard(ranked){
+  const maxNom = Math.max(...ranked.map(r=>r.nominations));
+  const el = document.getElementById("opsLeaderboard");
+  el.innerHTML = ranked.map((r,i)=>`
+    <div class="ops-row glass" style="animation-delay:${i*0.09}s">
+      <div class="ops-top">
+        <div class="ops-name">${rankIcon(i)} ${r.state}</div>
+        <div class="ops-sel">${fmt(r.selection)} selections</div>
+      </div>
+      <div class="ops-bars">
+        ${opsBar("Unique Opp.", r.uniqueOpportunity, maxNom, "var(--blue)")}
+        ${opsBar("Nominations", r.nominations, maxNom, "var(--purple)")}
+        ${opsBar("Interviews", r.interview, maxNom, "var(--green)")}
+        ${opsBar("Selections", r.selection, maxNom, "var(--gold)")}
+      </div>
+    </div>`).join("");
+  requestAnimationFrame(()=>{
+    el.querySelectorAll(".ops-bar-fill").forEach(f=>{ f.style.width = f.dataset.w + "%"; });
+  });
+}
+function opsBar(label, val, max, color){
+  const w = max ? (val/max*100) : 0;
+  return `<div class="ops-bar-row">
+    <div class="ops-bar-label">${label}</div>
+    <div class="ops-bar-track"><div class="ops-bar-fill" data-w="${w}" style="background:${color}"></div></div>
+    <div class="ops-bar-val">${fmt(val)}</div>
+  </div>`;
+}
+
+const chartInstances = {};
+function makeChart(canvasId, config){
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), config);
+}
+
+function renderCharts(d){
+  const labels = d.placement.map(r=>r.state);
+  const gridColor = "rgba(255,255,255,0.06)";
+  const tickColor = "#8a93a8";
+  Chart.defaults.color = tickColor;
+  Chart.defaults.font.family = "Inter, sans-serif";
+
+  makeChart("chartStacked", {
+    type:"bar",
+    data:{ labels, datasets:[
+      { label:"Placed by Anudip", data:d.placement.map(r=>r.anudip), backgroundColor:"#7C3AED", borderRadius:6 },
+      { label:"Self Placed", data:d.placement.map(r=>r.self), backgroundColor:"#10B981", borderRadius:6 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{position:"bottom"}},
+      scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, grid:{color:gridColor}} } }
+  });
+
+  makeChart("chartTargetVsTotal", {
+    type:"bar",
+    data:{ labels, datasets:[
+      { label:"Target", data:d.placement.map(r=>r.target), backgroundColor:"rgba(37,99,235,0.35)", borderRadius:6 },
+      { label:"Total Placed", data:d.placement.map(r=>r.totalPlaced), backgroundColor:"#2563EB", borderRadius:6 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{position:"bottom"}},
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:gridColor}} } }
+  });
+
+  makeChart("chartPie", {
+    type:"doughnut",
+    data:{ labels, datasets:[{ data:d.placement.map(r=>r.totalPlaced),
+      backgroundColor:["#FFD700","#2563EB","#10B981","#7C3AED","#F59E0B"], borderWidth:0 }] },
+    options:{ responsive:true, plugins:{legend:{position:"bottom", labels:{boxWidth:10}}} }
+  });
+
+  const t = d.totals;
+  const funnelSteps = [
+    { label:"Nominations", val:t.nominations, color:"linear-gradient(90deg,#2563EB,#7C3AED)" },
+    { label:"Interviews", val:t.interview, color:"linear-gradient(90deg,#7C3AED,#10B981)" },
+    { label:"Selections", val:t.selection, color:"linear-gradient(90deg,#10B981,#FFD700)" }
+  ];
+  const max = funnelSteps[0].val;
+  document.getElementById("funnelDisplay").innerHTML = funnelSteps.map((s,i)=>`
+    ${i>0?'<div class="funnel-arrow">→</div>':''}
+    <div class="funnel-step">
+      <div class="funnel-bar" data-w="${Math.max(8, s.val/max*100)}" style="background:${s.color}"></div>
+      <div class="funnel-val">${fmt(s.val)}</div>
+      <div class="funnel-lbl">${s.label}</div>
+    </div>`).join("");
+  requestAnimationFrame(()=>{
+    document.querySelectorAll(".funnel-bar").forEach(b=>{ b.style.width = b.dataset.w + "%"; });
+  });
+}
+
+function renderMotivation(d){
+  const msgs = [];
+  msgs.push({ icon:"🏆", accent:"var(--gold)",
+    html:`Congratulations <b>${d.weeklyChampion.state}</b>! You secured the highest weekly placements with <b>${fmt(d.weeklyChampion.weeklyPlaced)}</b> successful placements this week.` });
+  msgs.push({ icon:"🔥", accent:"var(--purple)",
+    html:`<b>${d.anudipChampion.state}</b> achieved the highest Anudip-sourced placements with <b>${fmt(d.anudipChampion.anudip)}</b>.` });
+  msgs.push({ icon:"⭐", accent:"var(--green)",
+    html:`<b>${d.selfChampion.state}</b> leads on Self Placements with <b>${fmt(d.selfChampion.self)}</b>.` });
+  msgs.push({ icon:"🎯", accent:"var(--blue)",
+    html:`<b>${d.progressLeader.state}</b> is closest to target at <b>${d.progressLeader.progressPct.toFixed(1)}%</b> of goal.` });
+  if (d.laggards.length){
+    const names = d.laggards.map(r=>r.state).join(" and ");
+    msgs.push({ icon:"💪", accent:"var(--ink-dim)",
+      html:`<b>${names}</b> ${d.laggards.length>1?'are':'is'} encouraged to build momentum next week — every placement counts.` });
+  }
+  document.getElementById("motivGrid").innerHTML = msgs.map((m,i)=>`
+    <div class="motiv-item" style="--accent:${m.accent}; animation-delay:${i*0.08}s">
+      <div class="motiv-icon">${m.icon}</div>
+      <div class="motiv-text">${m.html}</div>
+    </div>`).join("");
+}
+
+/* ============================================================
+   5. BOOT
+   ============================================================ */
+function showErrorBanner(message){
+  const banner = document.createElement("div");
+  banner.style.cssText = "max-width:1320px;margin:0 auto 20px;padding:14px 18px;border-radius:12px;"
+    + "background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);color:#fecaca;"
+    + "font-size:13px;font-family:'JetBrains Mono',monospace;";
+  banner.textContent = "⚠ " + message;
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
+async function renderDashboard(data, live, error, playConfetti){
+  const d = deriveAll(data);
+  renderPeriod(data.period);
+  renderDataSourcePill(live, error);
+  renderStats(d.totals);
+  renderLeaderboard(d.rankedByWeekly, playConfetti);
+  renderAchievements(d);
+  renderProgressRings(d.placement, d.progressLeader.state);
+  renderOpsLeaderboard(d.rankedBySelection);
+  renderCharts(d);
+  renderMotivation(d);
+}
+
+const AUTO_REFRESH_MS = 2 * 60 * 1000; // re-fetch the sheet every 2 seconds
+
+async function loadAndRender(playConfetti){
+  try{
+    const { data, live, error } = await loadData();
+    try{
+      await renderDashboard(data, live, error, playConfetti);
+    }catch(renderErr){
+      // A malformed live payload got past loadData's checks — force the known-good demo
+      // data so the page never sits blank, and say so on screen.
+      console.error("Rendering live data failed, forcing demo data instead:", renderErr);
+      await renderDashboard(CONFIG.FALLBACK_DATA, false, renderErr, playConfetti);
+      showErrorBanner("Couldn't render live sheet data (showing demo data instead). Open DevTools → Console for details: " + renderErr.message);
+    }
+  }catch(fatalErr){
+    console.error("Dashboard failed to initialize:", fatalErr);
+    showErrorBanner("Dashboard failed to load: " + fatalErr.message + ". Open DevTools → Console for details.");
+  }
+}
+
+(async function init(){
+  await loadAndRender(/* playConfetti */ true);
+
+  if (CONFIG.SHEET_WEBAPP_URL && CONFIG.SHEET_WEBAPP_URL.trim().length > 0){
+    setInterval(() => loadAndRender(/* playConfetti */ false), AUTO_REFRESH_MS);
+  }
+})();
+</script>
+</body>
+</html>

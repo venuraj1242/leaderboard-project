@@ -11,7 +11,7 @@
      self-contained HTML file with the dashboard logic inline (no build step or
      backend to issue a per-request nonce). This CSP still blocks any injected
      content from loading external scripts, images, or exfiltrating data to
-     unapproved domains — the main protection against the sheet-data XSS risk
+     unapproved domains - the main protection against the sheet-data XSS risk
      is the escapeHtml() used throughout the JS below, not this header alone. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'none';
@@ -32,7 +32,7 @@
 /* ============================================================
    MSDF WEEKLY PLACEMENT LEADERBOARD
    Data lives in CONFIG.FALLBACK_DATA below (or pulled live from
-   a Google Apps Script Web App URL — see CONFIG.SHEET_WEBAPP_URL).
+   a Google Apps Script Web App URL - see CONFIG.SHEET_WEBAPP_URL).
    Update the numbers there each week; nothing else needs to change.
    ============================================================ */
 
@@ -296,7 +296,7 @@ body{
   <section class="hero">
     <span class="trophy-float">🏆</span>
     <h1>MSDF Weekly Placement Leaderboard</h1>
-    <p class="sub">Performance Summary &middot; <span class="rng" id="periodLabel">—</span></p>
+    <p class="sub">Performance Summary &middot; <span class="rng" id="periodLabel">-</span></p>
     <div id="dataSourcePill"></div>
 
     <div class="stat-grid" id="statGrid"></div>
@@ -355,7 +355,7 @@ body{
       <div class="chart-card glass"><h3>Anudip vs Self Placement (Weekly)</h3><canvas id="chartStacked"></canvas></div>
       <div class="chart-card glass"><h3>Target vs Total Placement</h3><canvas id="chartTargetVsTotal"></canvas></div>
       <div class="chart-card glass"><h3>Placement Distribution</h3><canvas id="chartPie"></canvas></div>
-      <div class="chart-card glass"><h3>Operations Funnel — All Regions</h3><canvas id="chartOpsFunnel" style="display:none"></canvas>
+      <div class="chart-card glass"><h3>Operations Funnel - All Regions</h3><canvas id="chartOpsFunnel" style="display:none"></canvas>
         <div class="funnel" id="funnelDisplay"></div>
       </div>
     </div>
@@ -370,7 +370,7 @@ body{
   </section>
 
   <div class="footer">
-    <div>MSDF Weekly Placement Leaderboard &middot; auto-generated from live data — edit the sheet, not the code.</div>
+    <div>MSDF Weekly Placement Leaderboard &middot; auto-generated from live data - edit the sheet, not the code.</div>
     <div class="src" id="footerSrc"></div>
   </div>
 
@@ -378,7 +378,7 @@ body{
 
 <script>
 /* ============================================================
-   1. CONFIG — the only two things you should ever touch
+   1. CONFIG - the only two things you should ever touch
    ============================================================ */
 const CONFIG = {
   // Paste your deployed Google Apps Script Web App URL here once ready.
@@ -388,7 +388,7 @@ const CONFIG = {
   SHEET_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxtkvgGqEpF-gA_QBxI7KUe27lC3HoLJlV1rAJJgPcf_WgVLJR5iiPX8Urdo2NlhdW7jg/exec",
 
   // Must exactly match ACCESS_TOKEN in Code.gs. This deters casual scraping
-  // and search-engine crawling of the bare data endpoint — it does NOT make
+  // and search-engine crawling of the bare data endpoint - it does NOT make
   // the endpoint truly private, since this whole file (including this token)
   // is publicly visible on GitHub Pages. See the security note in Code.gs.
   SHEET_ACCESS_TOKEN: "x1JcBQmGU5yRX_af5BTctAC6syXeZ_5E",
@@ -430,16 +430,16 @@ async function loadData(){
       try{
         json = JSON.parse(raw);
       }catch(parseErr){
-        console.error("Sheet response wasn't valid JSON — this usually means the Apps Script URL is showing a login/permission page instead of your data. Raw response:", raw.slice(0,500));
+        console.error("Sheet response wasn't valid JSON - this usually means the Apps Script URL is showing a login/permission page instead of your data. Raw response:", raw.slice(0,500));
         throw parseErr;
       }
       if (json && json.error){
-        console.error("Sheet rejected the request:", json.error, "— check that SHEET_ACCESS_TOKEN here matches ACCESS_TOKEN in Code.gs.");
+        console.error("Sheet rejected the request:", json.error, "- check that SHEET_ACCESS_TOKEN here matches ACCESS_TOKEN in Code.gs.");
         throw new Error("Access token rejected: " + json.error);
       }
       if (!Array.isArray(json.placement) || !Array.isArray(json.operations) || json.placement.length === 0 || json.operations.length === 0){
         console.error("Sheet response was valid JSON but didn't contain the expected placement/operations arrays:", json);
-        throw new Error("Malformed payload — placement/operations missing or empty");
+        throw new Error("Malformed payload - placement/operations missing or empty");
       }
       console.info("Live sheet data loaded:", json);
       return { data: json, live: true };
@@ -491,7 +491,7 @@ const MEDALS = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8�
 const fmt = n => Number(n).toLocaleString("en-IN");
 function rankIcon(i){ return MEDALS[i] || (i+1)+"️⃣"; }
 
-// Sheet data is a shared, editable source — any string field (state names,
+// Sheet data is a shared, editable source - any string field (state names,
 // etc.) must be escaped before going into innerHTML, or a stray "<" typed
 // into a cell (accidental or not) could inject markup/script into the page
 // for every visitor. Numbers already go through fmt()/Number(), which are
@@ -526,7 +526,7 @@ function renderPeriod(period){
 function renderDataSourcePill(live, error){
   const el = document.getElementById("dataSourcePill");
   el.innerHTML = `<div class="datasrc ${live?'live':'demo'}"><span class="dot"></span>${
-    live ? "Live data from Google Sheet" : "Demo data — connect Apps Script URL in CONFIG to go live"
+    live ? "Live data from Google Sheet" : "Demo data - connect Apps Script URL in CONFIG to go live"
   }</div>`;
   document.getElementById("footerSrc").textContent = live
     ? "Source: Google Sheet (via Apps Script Web App)"
@@ -731,7 +731,7 @@ function renderMotivation(d){
   if (d.laggards.length){
     const names = d.laggards.map(r=>escapeHtml(r.state)).join(" and ");
     msgs.push({ icon:"💪", accent:"var(--ink-dim)",
-      html:`<b>${names}</b> ${d.laggards.length>1?'are':'is'} encouraged to build momentum next week — every placement counts.` });
+      html:`<b>${names}</b> ${d.laggards.length>1?'are':'is'} encouraged to build momentum next week - every placement counts.` });
   }
   document.getElementById("motivGrid").innerHTML = msgs.map((m,i)=>`
     <div class="motiv-item" style="--accent:${m.accent}; animation-delay:${i*0.08}s">
@@ -773,7 +773,7 @@ async function loadAndRender(playConfetti){
     try{
       await renderDashboard(data, live, error, playConfetti);
     }catch(renderErr){
-      // A malformed live payload got past loadData's checks — force the known-good demo
+      // A malformed live payload got past loadData's checks - force the known-good demo
       // data so the page never sits blank, and say so on screen.
       console.error("Rendering live data failed, forcing demo data instead:", renderErr);
       await renderDashboard(CONFIG.FALLBACK_DATA, false, renderErr, playConfetti);

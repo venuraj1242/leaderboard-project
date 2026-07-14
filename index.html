@@ -530,7 +530,7 @@ function renderDataSourcePill(live, error){
     live ? "Live data from Google Sheet" : "Demo data — connect Apps Script URL in CONFIG to go live"
   }</div>`;
   document.getElementById("footerSrc").textContent = live
-    ? "Source: Google Sheet (via Apps Script Web App)"
+    ? "Source: Google Sheet"
     : "Source: embedded fallback data (CONFIG.FALLBACK_DATA)";
 }
 

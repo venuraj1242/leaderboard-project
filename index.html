@@ -11,7 +11,7 @@
      self-contained HTML file with the dashboard logic inline (no build step or
      backend to issue a per-request nonce). This CSP still blocks any injected
      content from loading external scripts, images, or exfiltrating data to
-     unapproved domains - the main protection against the sheet-data XSS risk
+     unapproved domains — the main protection against the sheet-data XSS risk
      is the escapeHtml() used throughout the JS below, not this header alone. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'none';
@@ -32,7 +32,7 @@
 /* ============================================================
    MSDF WEEKLY PLACEMENT LEADERBOARD
    Data lives in CONFIG.FALLBACK_DATA below (or pulled live from
-   a Google Apps Script Web App URL - see CONFIG.SHEET_WEBAPP_URL).
+   a Google Apps Script Web App URL — see CONFIG.SHEET_WEBAPP_URL).
    Update the numbers there each week; nothing else needs to change.
    ============================================================ */
 
@@ -296,7 +296,7 @@ body{
   <section class="hero">
     <span class="trophy-float">🏆</span>
     <h1>MSDF Weekly Placement Leaderboard</h1>
-    <p class="sub">Performance Summary &middot; <span class="rng" id="periodLabel">-</span></p>
+    <p class="sub">Performance Summary &middot; <span class="rng" id="periodLabel">—</span></p>
     <div id="dataSourcePill"></div>
 
     <div class="stat-grid" id="statGrid"></div>
@@ -332,7 +332,7 @@ body{
   <section class="section">
     <div class="section-head">
       <div><div class="eyebrow">Target Tracking</div><h2>Progress Toward Target</h2></div>
-      <span class="tag">Total Placed ÷ Target</span>
+      <span class="tag">Total Placed ÷ Total Assessed</span>
     </div>
     <div class="prog-grid" id="progGrid"></div>
   </section>
@@ -355,7 +355,7 @@ body{
       <div class="chart-card glass"><h3>Anudip vs Self Placement (Weekly)</h3><canvas id="chartStacked"></canvas></div>
       <div class="chart-card glass"><h3>Target vs Total Placement</h3><canvas id="chartTargetVsTotal"></canvas></div>
       <div class="chart-card glass"><h3>Placement Distribution</h3><canvas id="chartPie"></canvas></div>
-      <div class="chart-card glass"><h3>Operations Funnel - All Regions</h3><canvas id="chartOpsFunnel" style="display:none"></canvas>
+      <div class="chart-card glass"><h3>Operations Funnel — All Regions</h3><canvas id="chartOpsFunnel" style="display:none"></canvas>
         <div class="funnel" id="funnelDisplay"></div>
       </div>
     </div>
@@ -370,7 +370,7 @@ body{
   </section>
 
   <div class="footer">
-    <div>MSDF Weekly Placement Leaderboard &middot; auto-generated from live data - edit the sheet, not the code.</div>
+    <div>MSDF Weekly Placement Leaderboard &middot; auto-generated from live data — edit the sheet, not the code.</div>
     <div class="src" id="footerSrc"></div>
   </div>
 
@@ -378,7 +378,7 @@ body{
 
 <script>
 /* ============================================================
-   1. CONFIG - the only two things you should ever touch
+   1. CONFIG — the only two things you should ever touch
    ============================================================ */
 const CONFIG = {
   // Paste your deployed Google Apps Script Web App URL here once ready.
@@ -388,27 +388,27 @@ const CONFIG = {
   SHEET_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxtkvgGqEpF-gA_QBxI7KUe27lC3HoLJlV1rAJJgPcf_WgVLJR5iiPX8Urdo2NlhdW7jg/exec",
 
   // Must exactly match ACCESS_TOKEN in Code.gs. This deters casual scraping
-  // and search-engine crawling of the bare data endpoint - it does NOT make
+  // and search-engine crawling of the bare data endpoint — it does NOT make
   // the endpoint truly private, since this whole file (including this token)
   // is publicly visible on GitHub Pages. See the security note in Code.gs.
   SHEET_ACCESS_TOKEN: "x1JcBQmGU5yRX_af5BTctAC6syXeZ_5E",
 
   // Used only when SHEET_WEBAPP_URL is empty, or if the live fetch fails.
   FALLBACK_DATA: {
-    period: { start: "2026-06-01", end: "2026-07-30" },
+    period: { start: "2026-07-07", end: "2026-07-14" },
     placement: [
-      { state: "Maharashtra-Pune",   target:260, totalPlaced:125, weeklyPlaced:35, anudip:9,  self:26 },
-      { state: "Maharashtra-Mumbai", target:387, totalPlaced:130, weeklyPlaced:29, anudip:21, self:8  },
-      { state: "Uttar Pradesh",      target:344, totalPlaced:27,  weeklyPlaced:7,  anudip:4,  self:3  },
-      { state: "Karnataka",          target:355, totalPlaced:2,   weeklyPlaced:1,  anudip:0,  self:1  },
-      { state: "Tamil Nadu",         target:414, totalPlaced:280, weeklyPlaced:0,  anudip:0,  self:0  }
+      { state: "Maharashtra-Pune",   totalAssessed:346, target:260, totalPlaced:128, weeklyPlaced:2, anudip:0, self:2 },
+      { state: "Maharashtra-Mumbai", totalAssessed:516, target:387, totalPlaced:144, weeklyPlaced:7, anudip:5, self:2 },
+      { state: "Uttar Pradesh",      totalAssessed:458, target:344, totalPlaced:31,  weeklyPlaced:0, anudip:0, self:0 },
+      { state: "Karnataka",          totalAssessed:473, target:355, totalPlaced:11,  weeklyPlaced:8, anudip:1, self:7 },
+      { state: "Tamil Nadu",         totalAssessed:552, target:414, totalPlaced:280, weeklyPlaced:33,anudip:33,self:0 }
     ],
     operations: [
-      { state: "Uttar Pradesh",      totalPlaced:27,  totalOpportunity:113, uniqueOpportunity:28, nominations:304, interview:69,  selection:2  },
-      { state: "Maharashtra-Pune",   totalPlaced:125, totalOpportunity:206, uniqueOpportunity:28, nominations:345, interview:57,  selection:8  },
-      { state: "Karnataka",          totalPlaced:2,   totalOpportunity:23,  uniqueOpportunity:11, nominations:149, interview:74,  selection:2  },
-      { state: "Tamil Nadu",         totalPlaced:280, totalOpportunity:24,  uniqueOpportunity:7,  nominations:270, interview:121, selection:0  },
-      { state: "Maharashtra-Mumbai", totalPlaced:130, totalOpportunity:134, uniqueOpportunity:39, nominations:310, interview:81,  selection:24 }
+      { state: "Uttar Pradesh",      totalPlaced:31,  totalOpportunity:126, uniqueOpportunity:9,  nominations:43,  interview:17, selection:3 },
+      { state: "Maharashtra-Pune",   totalPlaced:128, totalOpportunity:227, uniqueOpportunity:20, nominations:176, interview:26, selection:0 },
+      { state: "Karnataka",          totalPlaced:11,  totalOpportunity:33,  uniqueOpportunity:8,  nominations:84,  interview:29, selection:1 },
+      { state: "Tamil Nadu",         totalPlaced:280, totalOpportunity:27,  uniqueOpportunity:1,  nominations:1,   interview:1,  selection:1 },
+      { state: "Maharashtra-Mumbai", totalPlaced:144, totalOpportunity:144, uniqueOpportunity:8,  nominations:73,  interview:6,  selection:0 }
     ]
   }
 };
@@ -430,16 +430,16 @@ async function loadData(){
       try{
         json = JSON.parse(raw);
       }catch(parseErr){
-        console.error("Sheet response wasn't valid JSON - this usually means the Apps Script URL is showing a login/permission page instead of your data. Raw response:", raw.slice(0,500));
+        console.error("Sheet response wasn't valid JSON — this usually means the Apps Script URL is showing a login/permission page instead of your data. Raw response:", raw.slice(0,500));
         throw parseErr;
       }
       if (json && json.error){
-        console.error("Sheet rejected the request:", json.error, "- check that SHEET_ACCESS_TOKEN here matches ACCESS_TOKEN in Code.gs.");
+        console.error("Sheet rejected the request:", json.error, "— check that SHEET_ACCESS_TOKEN here matches ACCESS_TOKEN in Code.gs.");
         throw new Error("Access token rejected: " + json.error);
       }
       if (!Array.isArray(json.placement) || !Array.isArray(json.operations) || json.placement.length === 0 || json.operations.length === 0){
         console.error("Sheet response was valid JSON but didn't contain the expected placement/operations arrays:", json);
-        throw new Error("Malformed payload - placement/operations missing or empty");
+        throw new Error("Malformed payload — placement/operations missing or empty");
       }
       console.info("Live sheet data loaded:", json);
       return { data: json, live: true };
@@ -455,7 +455,7 @@ async function loadData(){
    3. DERIVED METRICS
    ============================================================ */
 function deriveAll(data){
-  const p = data.placement.map(r => ({...r, progressPct: r.target ? (r.totalPlaced / r.target) * 100 : 0}));
+  const p = data.placement.map(r => ({...r, progressPct: r.totalAssessed ? (r.totalPlaced / r.totalAssessed) * 100 : 0}));
   const rankedByWeekly = [...p].sort((a,b) => b.weeklyPlaced - a.weeklyPlaced);
   const o = data.operations.map(r => ({...r}));
   const rankedBySelection = [...o].sort((a,b) => b.selection - a.selection);
@@ -491,7 +491,7 @@ const MEDALS = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8�
 const fmt = n => Number(n).toLocaleString("en-IN");
 function rankIcon(i){ return MEDALS[i] || (i+1)+"️⃣"; }
 
-// Sheet data is a shared, editable source - any string field (state names,
+// Sheet data is a shared, editable source — any string field (state names,
 // etc.) must be escaped before going into innerHTML, or a stray "<" typed
 // into a cell (accidental or not) could inject markup/script into the page
 // for every visitor. Numbers already go through fmt()/Number(), which are
@@ -526,7 +526,7 @@ function renderPeriod(period){
 function renderDataSourcePill(live, error){
   const el = document.getElementById("dataSourcePill");
   el.innerHTML = `<div class="datasrc ${live?'live':'demo'}"><span class="dot"></span>${
-    live ? "Live data from Google Sheet" : "Demo data - connect Apps Script URL in CONFIG to go live"
+    live ? "Live data from Google Sheet" : "Demo data — connect Apps Script URL in CONFIG to go live"
   }</div>`;
   document.getElementById("footerSrc").textContent = live
     ? "Source: Google Sheet (via Apps Script Web App)"
@@ -536,8 +536,8 @@ function renderDataSourcePill(live, error){
 function renderStats(totals){
   const cards = [
     { label:"Total Weekly Placements", val:totals.weeklyPlaced, accent:"var(--blue)" },
-    { label:"Weekly Placed by Anudip",        val:totals.anudip,       accent:"var(--purple)" },
-    { label:"Weekly Self Placed",             val:totals.self,         accent:"var(--green)" },
+    { label:"Placed by Anudip",        val:totals.anudip,       accent:"var(--purple)" },
+    { label:"Self Placed",             val:totals.self,         accent:"var(--green)" },
     { label:"Total Placements",        val:totals.totalPlaced,  accent:"var(--gold)" }
   ];
   const grid = document.getElementById("statGrid");
@@ -622,7 +622,7 @@ function renderProgressRings(placement, progressLeaderState){
         <div class="ring-label">${pct.toFixed(0)}%</div>
       </div>
       <div class="prog-state">${isLeader?'👑 ':''}${escapeHtml(r.state)}</div>
-      <div class="prog-sub">${fmt(r.totalPlaced)} / ${fmt(r.target)}</div>
+      <div class="prog-sub">${fmt(r.totalPlaced)} / ${fmt(r.totalAssessed)}</div>
     </div>`;
   }).join("");
   requestAnimationFrame(()=>{
@@ -731,7 +731,7 @@ function renderMotivation(d){
   if (d.laggards.length){
     const names = d.laggards.map(r=>escapeHtml(r.state)).join(" and ");
     msgs.push({ icon:"💪", accent:"var(--ink-dim)",
-      html:`<b>${names}</b> ${d.laggards.length>1?'are':'is'} encouraged to build momentum next week - every placement counts.` });
+      html:`<b>${names}</b> ${d.laggards.length>1?'are':'is'} encouraged to build momentum next week — every placement counts.` });
   }
   document.getElementById("motivGrid").innerHTML = msgs.map((m,i)=>`
     <div class="motiv-item" style="--accent:${m.accent}; animation-delay:${i*0.08}s">
@@ -765,7 +765,7 @@ async function renderDashboard(data, live, error, playConfetti){
   renderMotivation(d);
 }
 
-const AUTO_REFRESH_MS = 1 * 60 * 1000; // re-fetch the sheet every 1 minute
+const AUTO_REFRESH_MS = 2 * 60 * 1000; // re-fetch the sheet every 2 minutes
 
 async function loadAndRender(playConfetti){
   try{
@@ -773,7 +773,7 @@ async function loadAndRender(playConfetti){
     try{
       await renderDashboard(data, live, error, playConfetti);
     }catch(renderErr){
-      // A malformed live payload got past loadData's checks - force the known-good demo
+      // A malformed live payload got past loadData's checks — force the known-good demo
       // data so the page never sits blank, and say so on screen.
       console.error("Rendering live data failed, forcing demo data instead:", renderErr);
       await renderDashboard(CONFIG.FALLBACK_DATA, false, renderErr, playConfetti);

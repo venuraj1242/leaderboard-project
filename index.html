@@ -39,8 +39,9 @@
 :root{
   --gold:#FFD700;
   --blue:#2563EB;
-  --green:#10B981;
+  --green:#0fc339;
   --purple:#7C3AED;
+  --teal:#0fe6d1;
   --bg-0:#0a0e17;
   --bg-1:#0f1524;
   --bg-2:#141b2e;
@@ -536,7 +537,7 @@ function renderDataSourcePill(live, error){
 function renderStats(totals){
   const cards = [
     { label:"Total Weekly Placements", val:totals.weeklyPlaced, accent:"var(--blue)" },
-    { label:"Placed by Anudip",        val:totals.anudip,       accent:"var(--purple)" },
+    { label:"Placed by Anudip",        val:totals.anudip,       accent:"var(--teal)" },
     { label:"Self Placed",             val:totals.self,         accent:"var(--green)" },
     { label:"Total Placements",        val:totals.totalPlaced,  accent:"var(--gold)" }
   ];
@@ -592,7 +593,7 @@ function renderLeaderboard(ranked, playConfetti){
 function renderAchievements(d){
   const cards = [
     { icon:"🏆", title:"Weekly Champion", value:fmt(d.weeklyChampion.weeklyPlaced), who:d.weeklyChampion.state, accent:"var(--gold)" },
-    { icon:"🔥", title:"Best Anudip Team", value:fmt(d.anudipChampion.anudip)+" Placements", who:d.anudipChampion.state, accent:"var(--purple)" },
+    { icon:"🔥", title:"Best Anudip Team", value:fmt(d.anudipChampion.anudip)+" Placements", who:d.anudipChampion.state, accent:"var(--teal)" },
     { icon:"⭐", title:"Self Placement Champion", value:fmt(d.selfChampion.self)+" Placements", who:d.selfChampion.state, accent:"var(--green)" },
     { icon:"🎯", title:"Overall Placement Leader", value:fmt(d.overallLeader.totalPlaced)+" Placements", who:d.overallLeader.state, accent:"var(--blue)" }
   ];
@@ -675,41 +676,41 @@ function renderCharts(d){
   makeChart("chartStacked", {
     type:"bar",
     data:{ labels, datasets:[
-      { label:"Placed by Anudip", data:d.placement.map(r=>r.anudip), backgroundColor:"#7C3AED", borderRadius:6 },
+      { label:"Placed by Anudip", data:d.placement.map(r=>r.anudip), backgroundColor:"#4DB6AC", borderRadius:6 },
       { label:"Self Placed", data:d.placement.map(r=>r.self), backgroundColor:"#10B981", borderRadius:6 }
     ]},
     options:{ responsive:true, plugins:{legend:{position:"bottom"}},
       scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, grid:{color:gridColor}} } }
   });
 
-makeChart("chartTargetVsTotal", {
-  type: "bar",
-  data: {
-    labels,
-    datasets: [
-      { 
-        label: "Target", 
-        data: d.placement.map(r => r.target), 
-        backgroundColor: "#F97316", // orange
-        borderRadius: 6 
-      },
-      { 
-        label: "Total Placed", 
-        data: d.placement.map(r => r.totalPlaced), 
-        backgroundColor: "#10B981", // green
-        borderRadius: 6 
+  makeChart("chartTargetVsTotal", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Target",
+          data: d.placement.map(r => r.target),
+          backgroundColor: "#F97316", // orange
+          borderRadius: 6
+        },
+        {
+          label: "Total Placed",
+          data: d.placement.map(r => r.totalPlaced),
+          backgroundColor: "#10B981", // green
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "bottom" } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: gridColor } }
       }
-    ]
-  },
-  options: { 
-    responsive: true, 
-    plugins: { legend: { position: "bottom" } },
-    scales: { 
-      x: { grid: { display: false } }, 
-      y: { grid: { color: gridColor } } 
-    } 
-  }
-});
+    }
+  });
 
 
   makeChart("chartPie", {

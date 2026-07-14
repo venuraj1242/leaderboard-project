@@ -677,7 +677,7 @@ function renderCharts(d){
     type:"bar",
     data:{ labels, datasets:[
       { label:"Placed by Anudip", data:d.placement.map(r=>r.anudip), backgroundColor:"#4DB6AC", borderRadius:6 },
-      { label:"Self Placed", data:d.placement.map(r=>r.self), backgroundColor:"#10B981", borderRadius:6 }
+      { label:"Self Placed", data:d.placement.map(r=>r.self), backgroundColor:"#F97316", borderRadius:6 }
     ]},
     options:{ responsive:true, plugins:{legend:{position:"bottom"}},
       scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, grid:{color:gridColor}} } }

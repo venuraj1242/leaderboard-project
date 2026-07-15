@@ -237,7 +237,7 @@ body{
 .chart-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 .chart-card{ padding:22px; }
 .chart-card h3{ font-family:var(--font-display); font-size:15px; font-weight:700; margin-bottom:14px; }
-.chart-card canvas{ max-height:280px; }
+.chart-card canvas{ max-height:280px; max-width:100%; height:auto; }
 .funnel-card{ grid-column:1 / -1; }
 .funnel{ display:flex; align-items:flex-end; justify-content:space-around; gap:20px; margin-top:16px; flex-wrap:wrap; }
 .funnel-step{ text-align:center; flex:1; min-width:140px; }
@@ -258,8 +258,39 @@ body{
 .motiv-text b{ color:var(--accent,var(--gold)); }
 
 /* ---------- Footer ---------- */
-.footer{ margin-top:60px; text-align:center; color:var(--ink-dimmer); font-size:12px; }
+.footer{
+  margin-top:60px; text-align:center; color:var(--ink-dimmer); font-size:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
 .footer .src{ font-family:var(--font-mono); margin-top:6px; }
+
+/* ---------- Period selector ---------- */
+.period-selector{
+  display:flex; justify-content:center; align-items:center; gap:10px;
+  margin-top:20px; margin-bottom:10px; flex-wrap:wrap;
+}
+.date-input{
+  background:rgb(11, 237, 218); border:1px solid rgba(10, 208, 247, 0.15);
+  color:var(--ink); font-family:var(--font-mono); font-size:13px;
+  padding:6px 10px; border-radius:6px; outline:none; transition:border-color 0.3s ease;
+}
+.date-input:focus{ border-color:var(--blue); }
+.update-btn{
+  background:linear-gradient(90deg,var(--blue),var(--purple)); color:#fff;
+  font-weight:600; font-size:13px; border:none; border-radius:6px;
+  padding:7px 14px; cursor:pointer; transition:transform 0.2s ease, box-shadow 0.2s ease;
+}
+.update-btn:hover{ transform:translateY(-2px); box-shadow:0 4px 12px rgba(37,99,235,0.4); }
+.update-btn:disabled{ opacity:0.6; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* ---------- Toast notification ---------- */
+.toast{
+  position:fixed; bottom:24px; right:24px;
+  background:linear-gradient(90deg,var(--blue),var(--purple)); color:#fff;
+  padding:12px 18px; border-radius:8px; font-size:14px;
+  opacity:0; transition:opacity 0.4s ease; z-index:9999; pointer-events:none;
+}
+.toast.show{ opacity:1; }
 
 /* ---------- Responsive ---------- */
 @media (max-width:980px){
@@ -271,12 +302,17 @@ body{
   .lb-row .hide-sm, .lb-head-row .hide-sm{ display:none; }
 }
 @media (max-width:620px){
-  .stat-grid{ grid-template-columns:repeat(2,1fr); }
-  .ach-grid{ grid-template-columns:1fr 1fr; }
+  .stat-grid{ grid-template-columns:1fr 1fr; }
+  .ach-grid{ grid-template-columns:1fr; }
   .prog-grid{ grid-template-columns:repeat(2,1fr); }
   .lb-row, .lb-head-row{ grid-template-columns:34px 1fr 0.9fr 1.2fr; }
   .lb-row .hide-xs, .lb-head-row .hide-xs{ display:none; }
   .ops-bar-row{ grid-template-columns:80px 1fr 36px; }
+  .footer{ font-size:11px; line-height:1.4; }
+}
+@media (max-width:480px){
+  .section-head h2{ font-size:18px; }
+  .footer{ font-size:10px; }
 }
 
 /* status pill for data source */
@@ -291,6 +327,15 @@ body{
 </head>
 <body>
 
+<!-- Period Selector -->
+<div class="period-selector">
+  <input type="date" id="startDate" class="date-input">
+  <input type="date" id="endDate" class="date-input">
+  <button class="update-btn" id="updatePeriodBtn" onclick="updatePeriod()">Update Period</button>
+</div>
+
+<div id="toast" class="toast"></div>
+
 <div class="wrap">
 
   <!-- ================= HERO ================= -->
@@ -303,14 +348,14 @@ body{
     <div class="stat-grid" id="statGrid"></div>
   </section>
 
-    <!-- ================= MOTIVATION ================= -->
+  <!-- ================= MOTIVATION ================= -->
   <section class="section">
     <div class="section-head">
       <div><div class="eyebrow">Team Message</div><h2>This Week's Callouts</h2></div>
     </div>
     <div class="motiv-grid glass" style="padding:8px;" id="motivGrid"></div>
   </section>
-  
+
   <!-- ================= LEADERBOARD ================= -->
   <section class="section">
     <div class="section-head">
@@ -337,7 +382,7 @@ body{
     <div class="ach-grid" id="achGrid"></div>
   </section>
 
-  <!-- ================= PROGRESS TOWARD TARGET ================= -->
+  <!-- ================= PROGRESS ================= -->
   <section class="section">
     <div class="section-head">
       <div><div class="eyebrow">Target Tracking</div><h2>Progress</h2></div>
@@ -522,8 +567,14 @@ function renderPeriod(period){
   const s = new Date(period.start).toLocaleDateString("en-GB", opts);
   const e = new Date(period.end).toLocaleDateString("en-GB", opts);
   document.getElementById("periodLabel").textContent = `${s} – ${e}`;
-}
 
+  // Keep the date pickers in sync with whatever period is currently loaded,
+  // so "Update Period" edits from the current values rather than blanks.
+  const startInput = document.getElementById("startDate");
+  const endInput = document.getElementById("endDate");
+  if (startInput && period.start) startInput.value = period.start;
+  if (endInput && period.end) endInput.value = period.end;
+}
 
 function renderDataSourcePill(live, error){
   const el = document.getElementById("dataSourcePill");
@@ -531,15 +582,15 @@ function renderDataSourcePill(live, error){
     live ? "Live data from Google Sheet" : "Demo data — connect Apps Script URL in CONFIG to go live"
   }</div>`;
   document.getElementById("footerSrc").textContent = live
-    ? "Source: Google Sheet "
+    ? "Source: Google Sheet"
     : "Source: embedded fallback data (CONFIG.FALLBACK_DATA)";
 }
 
 function renderStats(totals){
   const cards = [
     { label:"Total Weekly Placements", val:totals.weeklyPlaced, accent:"var(--blue)" },
-    { label:"Weekly Placed by Anudip",        val:totals.anudip,       accent:"var(--teal)" },
-    { label:"Weekly Self Placed",             val:totals.self,         accent:"var(--green)" },
+    { label:"Weekly Placed by Anudip", val:totals.anudip,       accent:"var(--teal)" },
+    { label:"Weekly Self Placed",      val:totals.self,         accent:"var(--green)" },
     { label:"Total Placements",        val:totals.totalPlaced,  accent:"var(--gold)" }
   ];
   const grid = document.getElementById("statGrid");
@@ -566,7 +617,6 @@ function spawnConfetti(container){
 }
 
 function renderLeaderboard(ranked, playConfetti){
-  const maxTarget = Math.max(...ranked.map(r=>r.target));
   const el = document.getElementById("leaderboard");
   el.innerHTML = ranked.map((r,i)=>`
     <div class="lb-row glass ${i===0?'rank-1':''}" style="animation-delay:${i*0.09}s" data-rank="${i}">
@@ -685,34 +735,14 @@ function renderCharts(d){
   });
 
   makeChart("chartTargetVsTotal", {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Target",
-          data: d.placement.map(r => r.target),
-          backgroundColor: "#F97316", // orange
-          borderRadius: 6
-        },
-        {
-          label: "Total Placed",
-          data: d.placement.map(r => r.totalPlaced),
-          backgroundColor: "#10B981", // green
-          borderRadius: 6
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: "bottom" } },
-      scales: {
-        x: { grid: { display: false } },
-        y: { grid: { color: gridColor } }
-      }
-    }
+    type:"bar",
+    data:{ labels, datasets:[
+      { label:"Target", data:d.placement.map(r=>r.target), backgroundColor:"#F97316", borderRadius:6 },
+      { label:"Total Placed", data:d.placement.map(r=>r.totalPlaced), backgroundColor:"#10B981", borderRadius:6 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{position:"bottom"}},
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:gridColor}} } }
   });
-
 
   makeChart("chartPie", {
     type:"doughnut",
@@ -763,7 +793,70 @@ function renderMotivation(d){
 }
 
 /* ============================================================
-   5. BOOT
+   5. UPDATE PERIOD (writes new dates back to the sheet)
+   ============================================================ */
+function showToast(message){
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove("show"), 3000);
+}
+
+async function updatePeriod(){
+  const startInput = document.getElementById("startDate");
+  const endInput = document.getElementById("endDate");
+  const btn = document.getElementById("updatePeriodBtn");
+  const start = startInput.value;
+  const end = endInput.value;
+
+  if (!start || !end){
+    showToast("Pick both a start and end date first.");
+    return;
+  }
+  if (!CONFIG.SHEET_WEBAPP_URL || CONFIG.SHEET_WEBAPP_URL.trim().length === 0){
+    showToast("No sheet connected — running on demo data only.");
+    return;
+  }
+
+  btn.disabled = true;
+  try{
+    // Content-Type is deliberately text/plain, not application/json: Apps
+    // Script Web Apps don't respond to CORS preflight (OPTIONS) requests, so
+    // a real application/json POST gets silently blocked by the browser
+    // before it ever reaches Code.gs. text/plain avoids the preflight; the
+    // body is still just a JSON string, parsed the same way on the server.
+    const res = await fetch(CONFIG.SHEET_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ start, end, key: CONFIG.SHEET_ACCESS_TOKEN })
+    });
+    const raw = await res.text();
+    let result;
+    try{
+      result = JSON.parse(raw);
+    }catch(parseErr){
+      console.error("Update Period response wasn't valid JSON:", raw.slice(0,500));
+      showToast("Update failed — see console for details.");
+      return;
+    }
+
+    if (result.status === "ok"){
+      showToast("Reporting period updated! Refreshing…");
+      await loadAndRender(/* playConfetti */ false);
+    } else {
+      showToast("Update failed: " + (result.error || "Unknown error"));
+    }
+  }catch(err){
+    console.error("Update Period request failed:", err);
+    showToast("Update failed — check your connection and console.");
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   6. BOOT
    ============================================================ */
 function showErrorBanner(message){
   const banner = document.createElement("div");
